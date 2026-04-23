@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BeatDrop - Rhythm Tap Game</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+:root{--bg:#0a0a1a;--pink:#ff2d95;--blue:#00b4ff;--purple:#8b5cf6;--green:#10b981;--card:rgba(15,15,30,.92);--font:'Outfit',sans-serif}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;font-family:var(--font);background:var(--bg);color:#e5e5f0;user-select:none}
+.screen{position:fixed;inset:0;display:none;justify-content:center;align-items:center;z-index:10;padding:20px}
+.screen.active{display:flex}
+#game-screen.active{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:30px}
+.card{background:var(--card);backdrop-filter:blur(20px);border:1px solid rgba(255,45,149,.12);border-radius:18px;padding:36px;text-align:center;max-width:440px;width:90%;animation:pop .5s ease}
+@keyframes pop{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:none}}
+.badge{display:inline-block;padding:5px 14px;background:rgba(255,45,149,.06);border:1px solid rgba(255,45,149,.2);border-radius:20px;font-size:.6rem;letter-spacing:2px;text-transform:uppercase;color:var(--pink);margin-bottom:16px}
+h1{font-size:2.6rem;font-weight:900;margin-bottom:8px}
+h1 span{background:linear-gradient(135deg,var(--pink),var(--blue));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.sub{color:#555;font-size:.9rem;margin-bottom:24px;line-height:1.5}
+.hint{font-size:.65rem;color:#444;margin-top:12px}
+.neon-btn{padding:14px 40px;background:linear-gradient(135deg,var(--pink),var(--purple));color:white;border:none;border-radius:12px;font-family:var(--font);font-size:1rem;font-weight:700;cursor:pointer;transition:all .3s;box-shadow:0 4px 15px rgba(255,45,149,.3)}
+.neon-btn:hover{transform:translateY(-2px);box-shadow:0 8px 25px rgba(255,45,149,.4)}
+/* Game */
+.game-hud{position:fixed;top:16px;left:50%;transform:translateX(-50%);display:flex;gap:16px;z-index:20}
+.gh-item{padding:8px 16px;background:var(--card);border:1px solid rgba(255,255,255,.04);border-radius:10px;text-align:center}
+.gh-label{font-size:.5rem;letter-spacing:2px;text-transform:uppercase;color:#555}
+.gh-val{font-size:1.2rem;font-weight:800;color:var(--pink)}
+.lanes{position:relative;width:100%;max-width:360px;height:70vh;z-index:10;overflow:hidden;border-radius:16px;background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.04)}
+.lane{position:absolute;top:0;width:25%;height:100%;border-right:1px solid rgba(255,255,255,.03)}
+.lane:nth-child(1){left:0}.lane:nth-child(2){left:25%}.lane:nth-child(3){left:50%}.lane:nth-child(4){left:75%;border-right:none}
+.hit-zone{position:absolute;bottom:60px;left:0;right:0;height:4px;background:rgba(255,45,149,.3);z-index:5}
+.tap-buttons{display:flex;width:100%;max-width:360px;z-index:20;margin-top:-1px}
+.tap-btn{flex:1;height:70px;border:none;cursor:pointer;font-size:1.5rem;transition:all .1s;display:flex;align-items:center;justify-content:center}
+.tap-btn:nth-child(1){background:rgba(255,45,149,.15);border-radius:0 0 0 14px;color:var(--pink)}
+.tap-btn:nth-child(2){background:rgba(0,180,255,.15);color:var(--blue)}
+.tap-btn:nth-child(3){background:rgba(139,92,246,.15);color:var(--purple)}
+.tap-btn:nth-child(4){background:rgba(16,185,129,.15);border-radius:0 0 14px 0;color:var(--green)}
+.tap-btn:active{filter:brightness(2);transform:scale(.95)}
+.note{position:absolute;width:calc(25% - 8px);height:40px;border-radius:8px;left:4px;animation:noteFall linear forwards;z-index:4}
+@keyframes noteFall{from{top:-50px}to{top:calc(100% + 50px)}}
+.note.lane-0{left:calc(0% + 4px);background:linear-gradient(180deg,var(--pink),rgba(255,45,149,.4))}
+.note.lane-1{left:calc(25% + 4px);background:linear-gradient(180deg,var(--blue),rgba(0,180,255,.4))}
+.note.lane-2{left:calc(50% + 4px);background:linear-gradient(180deg,var(--purple),rgba(139,92,246,.4))}
+.note.lane-3{left:calc(75% + 4px);background:linear-gradient(180deg,var(--green),rgba(16,185,129,.4))}
+.hit-flash{position:absolute;bottom:40px;width:25%;height:80px;opacity:0;z-index:6;pointer-events:none}
+.hit-flash.perfect{animation:flashPerfect .3s ease}
+.hit-flash.miss{animation:flashMiss .3s ease}
+@keyframes flashPerfect{0%{opacity:.6;background:rgba(16,185,129,.5)}100%{opacity:0}}
+@keyframes flashMiss{0%{opacity:.6;background:rgba(239,68,68,.5)}100%{opacity:0}}
+.feedback{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:1.8rem;font-weight:900;pointer-events:none;z-index:30;opacity:0}
+.feedback.show{animation:fbPop .5s ease forwards}
+@keyframes fbPop{0%{opacity:1;transform:translate(-50%,-50%) scale(.5)}50%{transform:translate(-50%,-50%) scale(1.2)}100%{opacity:0;transform:translate(-50%,-70%) scale(1)}}
+.feedback.perfect{color:var(--green)}.feedback.good{color:var(--blue)}.feedback.miss{color:#ef4444}
+/* Library */
+.library-container{margin:20px 0;display:flex;flex-direction:column;gap:10px;max-height:180px;overflow-y:auto;padding-right:8px}
+.library-container::-webkit-scrollbar{width:4px}
+.library-container::-webkit-scrollbar-thumb{background:rgba(255,45,149,.5);border-radius:4px}
+.song-card{display:flex;align-items:center;padding:12px 16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05);border-radius:12px;cursor:pointer;transition:all .2s;text-align:left}
+.song-card:hover{background:rgba(255,255,255,.06);border-color:rgba(255,45,149,.3)}
+.song-card.selected{background:rgba(255,45,149,.1);border-color:var(--pink);box-shadow:0 0 15px rgba(255,45,149,.15)}
+.song-icon{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,var(--pink),var(--purple));display:flex;align-items:center;justify-content:center;margin-right:14px;font-size:1.2rem;box-shadow:0 4px 10px rgba(255,45,149,.3)}
+.song-info{flex:1}
+.song-title{font-size:.95rem;font-weight:700;color:#fff;margin-bottom:3px}
+.song-artist{font-size:.75rem;color:#aaa}
+.song-play{opacity:0;font-size:.8rem;color:var(--pink);transition:opacity .2s}
+.song-card:hover .song-play,.song-card.selected .song-play{opacity:1}
+/* Results */
+.res-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0}
+.r-item{padding:12px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.04);border-radius:10px;text-align:center}
+.r-val{font-size:1.5rem;font-weight:800;color:var(--pink)}
+.r-lbl{font-size:.55rem;letter-spacing:1px;text-transform:uppercase;color:#555;margin-top:2px}
+@media(max-width:600px){h1{font-size:1.8rem}.card{padding:24px 20px}.lanes{height:60vh}.tap-btn{height:60px}}
+    </style>
+</head>
+<body>
+    <audio id="bg-audio" loop preload="none">
+        <source src="https://cdn.pixabay.com/audio/2022/10/25/audio_33843f9d3f.mp3" type="audio/mpeg">
+    </audio>
+
+    <div id="intro-screen" class="screen active">
+        <div class="card">
+            <div class="badge">VishwaNova 2026 • Games</div>
+            <h1>Beat<span>Drop</span></h1>
+            <p class="sub">Select a track and tap the notes to the rhythm!</p>
+            <div class="library-container" id="song-library"></div>
+            <button id="start-btn" class="neon-btn">🎶 Drop the Beat</button>
+            <p class="hint">🔊 Select a track to preview • Tap or use keys A S D F</p>
+        </div>
+    </div>
+
+    <div id="game-screen" class="screen">
+        <div class="game-hud">
+            <div class="gh-item"><span class="gh-label">Score</span><div class="gh-val" id="g-score">0</div></div>
+            <div class="gh-item"><span class="gh-label">Combo</span><div class="gh-val" id="g-combo">0</div></div>
+            <div class="gh-item"><span class="gh-label">Level</span><div class="gh-val" id="g-level">1</div></div>
+            <div class="gh-item"><span class="gh-label">Time</span><div class="gh-val" id="g-time">30</div></div>
+        </div>
+        <div class="lanes" id="lanes">
+            <div class="lane"></div><div class="lane"></div><div class="lane"></div><div class="lane"></div>
+            <div class="hit-zone"></div>
+        </div>
+        <div class="tap-buttons">
+            <button class="tap-btn" data-lane="0">♪</button>
+            <button class="tap-btn" data-lane="1">♫</button>
+            <button class="tap-btn" data-lane="2">♪</button>
+            <button class="tap-btn" data-lane="3">♫</button>
+        </div>
+        <div class="feedback" id="feedback"></div>
+    </div>
+
+    <div id="results-screen" class="screen">
+        <div class="card">
+            <h2 style="font-size:1.3rem;font-weight:800;color:var(--pink);margin-bottom:4px">Song Complete!</h2>
+            <div class="res-grid">
+                <div class="r-item"><span class="r-val" id="f-score">0</span><span class="r-lbl">Score</span></div>
+                <div class="r-item"><span class="r-val" id="f-perfect">0</span><span class="r-lbl">Perfects</span></div>
+                <div class="r-item"><span class="r-val" id="f-good">0</span><span class="r-lbl">Goods</span></div>
+                <div class="r-item"><span class="r-val" id="f-miss">0</span><span class="r-lbl">Misses</span></div>
+            </div>
+            <div style="padding:10px 20px;background:rgba(255,45,149,.05);border:1px solid rgba(255,45,149,.1);border-radius:10px;margin-bottom:16px;font-size:.85rem;color:var(--pink)" id="f-rank">🎤 Ranking...</div>
+            <button id="retry-btn" class="neon-btn">🔄 Play Again</button>
+        </div>
+    </div>
+
+    <script>
+const bgAudio=document.getElementById('bg-audio'),lanes=document.getElementById('lanes');
+const GAME_DURATION=30;
+let score=0,combo=0,maxCombo=0,perfects=0,goods=0,misses=0,notes=[],gameTimer=null,gameLoopTimer=null,timeLeft=GAME_DURATION,running=false;
+let currentBpm=120, level=1, currentLevelSpeed=2.5, beatIndex=0;
+
+const songsList = [
+    { id: 's1', title: 'Levitating', artist: 'Dua Lipa', src: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/59/dc/4d/59dc4dda-93ff-8f1c-c536-f005f6ea6af5/mzaf_3066686759813252385.plus.aac.p.m4a', bpm: 103 },
+    { id: 's2', title: 'Don’t Start Now', artist: 'Dua Lipa', src: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/24/3d/34/243d3413-a0fc-b229-f54a-1715ebd3a9ca/mzaf_11578996572221800393.plus.aac.p.m4a', bpm: 124 },
+    { id: 's3', title: 'Shake It Off', artist: 'Taylor Swift', src: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/11/d5/6d/11d56d4a-ce23-e793-8681-70dc4d35d931/mzaf_5886436202259848624.plus.aac.p.m4a', bpm: 160 },
+    { id: 's4', title: 'Can’t Stop the Feeling!', artist: 'Justin Timberlake', src: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/86/41/2d/86412d20-2f4d-39fc-221b-3f643d7c99c6/mzaf_9909715182585785919.plus.aac.p.m4a', bpm: 113 },
+    { id: 's5', title: 'Physical', artist: 'Dua Lipa', src: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/87/45/78/874578c1-d683-d1e6-00e4-08848279fa3a/mzaf_17519393520049027931.plus.aac.p.m4a', bpm: 147 },
+    { id: 's6', title: 'Style', artist: 'Taylor Swift', src: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/c7/79/81/c7798117-a0f6-0695-275f-95fd3ef4fdf4/mzaf_9965434137419857797.plus.aac.p.m4a', bpm: 95 },
+    { id: 's7', title: 'Cake By The Ocean', artist: 'DNCE', src: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/aa/62/65/aa626560-8dde-3aee-7c66-c19b74c206ab/mzaf_11691676274114841013.plus.aac.p.m4a', bpm: 119 },
+    { id: 's8', title: 'Sorry', artist: 'Justin Bieber', src: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/66/eb/29/66eb29c0-c2f9-d9df-8af3-3bf2562c9d7c/mzaf_4099789285264521999.plus.aac.p.m4a', bpm: 100 },
+    { id: 's9', title: 'Happier', artist: 'Marshmello ft. Bastille', src: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/fb/3f/e6/fb3fe69b-1f83-dae3-ad86-34b73a50e86c/mzaf_12086156071273718688.plus.aac.p.m4a', bpm: 100 },
+    { id: 's10', title: 'On Top of the World', artist: 'Imagine Dragons', src: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/cf/89/7b/cf897bba-9f5a-0621-df08-b6d7c83bf654/mzaf_7096659419087440090.plus.aac.p.m4a', bpm: 100 }
+];
+let currentSongIndex = 0;
+
+function initLibrary() {
+    const lib = document.getElementById('song-library');
+    lib.innerHTML = '';
+    songsList.forEach((song, idx) => {
+        const card = document.createElement('div');
+        card.className = 'song-card' + (idx === currentSongIndex ? ' selected' : '');
+        card.innerHTML = `
+            <div class="song-icon">🎵</div>
+            <div class="song-info">
+                <div class="song-title">${song.title}</div>
+                <div class="song-artist">${song.artist}</div>
+            </div>
+            <div class="song-play">►</div>
+        `;
+        card.addEventListener('click', () => {
+            currentSongIndex = idx;
+            document.querySelectorAll('.song-card').forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+            bgAudio.src = song.src;
+            bgAudio.currentTime = 0;
+            bgAudio.play().catch(()=>{});
+        });
+        lib.appendChild(card);
+    });
+    bgAudio.src = songsList[currentSongIndex].src;
+}
+
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active')}
+
+function spawnNote(speed){
+    if(!running)return;
+    const lane=Math.floor(Math.random()*4);
+    const el=document.createElement('div');
+    el.className=`note lane-${lane}`;
+    const fraction = (lanes.clientHeight - 10) / (lanes.clientHeight + 100);
+    const visualDuration = speed / fraction;
+    el.style.animationDuration=visualDuration+'s';
+    lanes.appendChild(el);
+    const note={el,lane,time:Date.now(),speed:visualDuration,hit:false};
+    notes.push(note);
+    el.addEventListener('animationend',()=>{if(!note.hit&&running){misses++;combo=0;showFeedback('miss');updateHud()}el.remove()});
+}
+
+function hitLane(laneIdx){
+    if(!running)return;
+    const hitY=lanes.clientHeight-60;
+    const now=Date.now();
+    let bestNote=null,bestDist=Infinity;
+    notes.forEach(n=>{
+        if(n.hit||n.lane!==laneIdx)return;
+        const elapsed=(now-n.time)/1000;
+        const noteY=(elapsed/n.speed)*(lanes.clientHeight+100)-50;
+        const dist=Math.abs(noteY-hitY);
+        if(dist<bestDist){bestDist=dist;bestNote=n}
+    });
+    if(!bestNote)return;
+    if(bestDist<35){bestNote.hit=true;perfects++;score+=100+combo*10;combo++;showFeedback('perfect');bestNote.el.remove()}
+    else if(bestDist<80){bestNote.hit=true;goods++;score+=50+combo*5;combo++;showFeedback('good');bestNote.el.remove()}
+    else if(bestDist<130){bestNote.hit=true;goods++;score+=25;combo=0;showFeedback('good');bestNote.el.remove()}
+    if(combo>maxCombo)maxCombo=combo;
+    updateHud();
+    const flash=document.createElement('div');flash.className='hit-flash '+(bestDist<35?'perfect':'miss');flash.style.left=(laneIdx*25)+'%';lanes.appendChild(flash);setTimeout(()=>flash.remove(),300);
+}
+
+function showFeedback(type){
+    const fb=document.getElementById('feedback');
+    fb.className='feedback '+type;fb.textContent=type==='perfect'?'PERFECT!':type==='good'?'GOOD':type;
+    fb.classList.remove('show');void fb.offsetWidth;fb.classList.add('show');
+}
+
+function updateHud(){
+    document.getElementById('g-score').textContent=score;
+    document.getElementById('g-combo').textContent=combo;
+    document.getElementById('g-level').textContent=level;
+}
+
+function startGame(){
+    score=0;combo=0;maxCombo=0;perfects=0;goods=0;misses=0;timeLeft=GAME_DURATION;notes=[];running=true;
+    level=1; currentLevelSpeed=2.5; beatIndex=0;
+    lanes.querySelectorAll('.note,.hit-flash').forEach(e=>e.remove());
+    updateHud();document.getElementById('g-time').textContent=timeLeft;
+    showScreen('game-screen');
+    currentBpm = songsList[currentSongIndex].bpm || 120;
+    bgAudio.currentTime=0;bgAudio.volume=.4;bgAudio.play().catch(()=>{});
+    
+    const startTime = Date.now();
+    const secondsPerBeat = 60 / currentBpm;
+    
+    while (beatIndex * secondsPerBeat - currentLevelSpeed < 0) { beatIndex++; }
+
+    function loop() {
+        if(!running) return;
+        const elapsed = (Date.now() - startTime) / 1000;
+        if (elapsed > 20 && level === 2) { level=3; currentLevelSpeed=1.3; showFeedback('LEVEL 3 SPEED!'); updateHud(); }
+        else if (elapsed > 10 && level === 1) { level=2; currentLevelSpeed=1.8; showFeedback('LEVEL 2 SPEED!'); updateHud(); }
+        const nextBeatTime = beatIndex * secondsPerBeat;
+        if (elapsed >= nextBeatTime - currentLevelSpeed) {
+            spawnNote(currentLevelSpeed);
+            if (level === 3 && Math.random() > 0.4) { beatIndex += 0.5; }
+            else { beatIndex++; }
+        }
+        gameLoopTimer = requestAnimationFrame(loop);
+    }
+    loop();
+    gameTimer=setInterval(()=>{timeLeft--;document.getElementById('g-time').textContent=timeLeft;if(timeLeft<=0){running=false;cancelAnimationFrame(gameLoopTimer);clearInterval(gameTimer);setTimeout(endGame,1500)}},1000);
+}
+
+function endGame(){
+    showScreen('results-screen');
+    document.getElementById('f-score').textContent=score;
+    document.getElementById('f-perfect').textContent=perfects;
+    document.getElementById('f-good').textContent=goods;
+    document.getElementById('f-miss').textContent=misses;
+    const total=perfects+goods+misses;
+    const accuracy=total>0?Math.round(((perfects+goods)/total)*100):0;
+    let rank='🎤 Rookie';
+    if(accuracy>=40)rank='🎸 Beginner';if(accuracy>=60)rank='🎹 Musician';if(accuracy>=80)rank='🎷 Virtuoso';if(accuracy>=95)rank='🏆 Beat Master';
+    document.getElementById('f-rank').textContent=`${rank} • ${accuracy}% accuracy`;
+}
+
+// Tap buttons
+document.querySelectorAll('.tap-btn').forEach(btn=>btn.addEventListener('click',()=>hitLane(parseInt(btn.dataset.lane))));
+// Keyboard
+const keyMap={a:0,s:1,d:2,f:3};
+document.addEventListener('keydown',e=>{const lane=keyMap[e.key.toLowerCase()];if(lane!==undefined)hitLane(lane)});
+
+document.getElementById('start-btn').addEventListener('click',startGame);
+document.getElementById('retry-btn').addEventListener('click',startGame);
+
+initLibrary();
+    </script>
+</body>
+</html>
